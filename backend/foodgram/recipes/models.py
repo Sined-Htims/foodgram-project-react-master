@@ -10,7 +10,7 @@ User = get_user_model()
 
 
 class Tag(models.Model):
-    '''Модель тэгов'''
+    '''Модель тэгов.'''
     name = models.CharField(
         verbose_name='Название',
         max_length=settings.MAX_LENGTH_TEG,
@@ -20,7 +20,6 @@ class Tag(models.Model):
         verbose_name='Цветовой HEX-код',
         max_length=settings.MAX_LENGTH_HEX_COLOR,
         unique=True,
-        # Валидатор для проверки в каком виде передан цвет
         validators=[HexValidator]
     )
     slug = models.SlugField(
@@ -39,10 +38,9 @@ class Tag(models.Model):
 
 
 class Ingredient(models.Model):
-    '''Модель ингредиентов'''
+    '''Модель ингредиентов.'''
     name = models.CharField(
         verbose_name='Продукт',
-        unique=True,  # Походу не должен быть uniq, из-за импорта
         max_length=settings.MAX_LENGTH_INGREDIENT
     )
     measurement_unit = models.CharField(
@@ -60,15 +58,13 @@ class Ingredient(models.Model):
 
 
 class Recipe(models.Model):
-    '''Модель рецептов'''
+    '''Модель рецептов.'''
     name = models.CharField(
         verbose_name='Название',
         max_length=settings.MAX_LENGTH_RECIPES
     )
     image = models.ImageField(
         verbose_name='Изображение',
-        # Путь куда сохраняется загруженные файлы
-        # основная папка указана в settings.py
         upload_to='recipes/images/'
     )
     text = models.TextField(verbose_name='Описание')
@@ -84,7 +80,6 @@ class Recipe(models.Model):
     )
     tags = models.ManyToManyField(
         Tag,
-        through='RecipeTag',
         verbose_name='Тэги'
     )
     ingredients = models.ManyToManyField(
@@ -92,9 +87,13 @@ class Recipe(models.Model):
         through='RecipeIngredient',
         verbose_name='Ингредиенты'
     )
+    pub_date = models.DateTimeField(
+        verbose_name='Время публикации',
+        auto_now_add=True
+    )
 
     class Meta:
-        ordering = ('-id',)
+        ordering = ('-pub_date',)
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
 
@@ -102,31 +101,8 @@ class Recipe(models.Model):
         return self.name
 
 
-# Обсудить метод удаления!
-class RecipeTag(models.Model):
-    '''Промежуточная таблица тэгов для модели "Recipe"'''
-    recipe = models.ForeignKey(
-        Recipe,
-        on_delete=models.CASCADE,
-        verbose_name='Рецепты'
-    )
-    tag = models.ForeignKey(
-        Tag,
-        on_delete=models.CASCADE,
-        verbose_name='Тэги'
-    )
-
-    class Meta:
-        ordering = ('-id',)
-        verbose_name = 'Таблица рецептов и тэгов'
-        verbose_name_plural = 'Таблица рецептов и тэгов'
-
-    def __str__(self):
-        return f'Для "{self.recipe}", установлен тэг "{self.tag}"'
-
-
 class RecipeIngredient(models.Model):
-    '''Промежуточная таблица ингредиентов для модели "Recipe"'''
+    '''Промежуточная таблица ингредиентов для модели "Recipe".'''
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
@@ -149,17 +125,17 @@ class RecipeIngredient(models.Model):
 
 
 class Favorite(models.Model):
-    '''Модель избранных рецептов'''
+    '''Модель избранных рецептов.'''
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='user',
+        related_name='favorite_users',
         verbose_name='Пользователь'
     )
     recipe = models.ForeignKey(
         Recipe,
         on_delete=models.CASCADE,
-        related_name='recipe',
+        related_name='favorite_recipes',
         verbose_name='Рецепт'
     )
 
@@ -167,8 +143,6 @@ class Favorite(models.Model):
         ordering = ('-id',)
         verbose_name = 'Избранное'
         verbose_name_plural = 'Избранное'
-        # Ограничение на уникальность пары:
-        # Пользователь - рецепт.
         constraints = [
             UniqueConstraint(
                 fields=['user', 'recipe'],
@@ -177,11 +151,11 @@ class Favorite(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.user}, добавил в избранное "{self.recipe.name}"'
+        return f'{self.user}, добавил в избранное "{self.recipe.name}".'
 
 
 class ShoppingList(models.Model):
-    '''Модель списка покупок'''
+    '''Модель списка покупок.'''
     owner = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -201,11 +175,11 @@ class ShoppingList(models.Model):
         verbose_name_plural = 'Список покупок'
 
     def __str__(self):
-        return f'Список покупок пользователя: "{self.owner}"'
+        return f'Список покупок пользователя: "{self.owner}".'
 
 
 class RecipeShoppingList(models.Model):
-    '''Промежуточная таблица рецептов для модели "ShoppingList"'''
+    '''Промежуточная таблица рецептов для модели "ShoppingList."'''
     shopping_list = models.ForeignKey(
         ShoppingList,
         on_delete=models.CASCADE,
@@ -221,8 +195,6 @@ class RecipeShoppingList(models.Model):
         ordering = ('-id',)
         verbose_name = 'Таблица списка покупок и рецептов'
         verbose_name_plural = 'Таблица списка покупок и рецептов'
-        # Ограничение на уникальность пары:
-        # Список покупок - рецепт.
         constraints = [
             UniqueConstraint(
                 fields=['shopping_list', 'recipe'],
@@ -231,4 +203,4 @@ class RecipeShoppingList(models.Model):
         ]
 
     def __str__(self):
-        return f'"{self.shopping_list.owner}", добавил "{self.recipe}" в свой список покупок'
+        return f'"{self.shopping_list.owner}", добавил "{self.recipe}" в свой список покупок.'

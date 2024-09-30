@@ -1,51 +1,48 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.core.exceptions import ValidationError
 from django.core.validators import MinLengthValidator
 from django.db import models
-from django.db.models import UniqueConstraint
+from django.db.models import CheckConstraint, F, UniqueConstraint, Q
 
 from users.validators import username_validator
 
 
 class Subscription(models.Model):
-    '''Модель подписок'''
-    # Кто подписывается
+    '''Модель подписок.'''
     subscriber = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='user_subscriptions',  # Подписки
-        verbose_name='Фанат'
+        related_name='user_subscriptions',
+        verbose_name='Фанат',
+        help_text='Кто подписывается'
     )
-    # На кого подписывается
     subscribed_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='user_subscribers',  # Подписчики
-        verbose_name='Кумир'
+        related_name='user_subscribers',
+        verbose_name='Кумир',
+        help_text='На кого подписывается'
     )
-    # Когда подписался
     created_at = models.DateTimeField(
         auto_now_add=True,
-        verbose_name='Дата подписки'
+        verbose_name='Дата подписки',
+        help_text='Когда подписался'
     )
-
-    def clean(self):
-        # Ограничение на самоподписку
-        if self.subscriber == self.subscribed_to:
-            raise ValidationError("Вы не можете подписываться на самого себя.")
 
     class Meta:
         ordering = ('-id',)
         verbose_name = 'Подписка'
         verbose_name_plural = 'Подписки'
-        # Ограничение на уникальность пары:
-        # Фанат - кумир.
         constraints = [
+            CheckConstraint(
+                check=~Q(subscriber=F('subscribed_to')),
+                name='prevent_self_subscription',
+                # violation_error_message="Невозможно подписаться на себя"
+            ),
             UniqueConstraint(
                 fields=['subscriber', 'subscribed_to'],
-                name='unique_subscription'
+                name='prevent_duplicate_subscription'
             )
         ]
 
@@ -54,9 +51,9 @@ class Subscription(models.Model):
 
 
 class CustomUser(AbstractUser):
-    '''Кастомная модель пользователя'''
+    '''Кастомная модель пользователя.'''
     email = models.EmailField(
-        verbose_name=('Адрес электронной почты'),
+        verbose_name='Адрес электронной почты',
         max_length=settings.MAX_LENGTH_EMAIL,
         unique=True
     )
@@ -64,7 +61,6 @@ class CustomUser(AbstractUser):
         verbose_name='Имя пользователя',
         max_length=settings.MAX_LENGTH_USERNAME,
         unique=True,
-        # Проверка символов и запрещенных username-ов
         validators=[UnicodeUsernameValidator(), username_validator],
     )
     password = models.CharField(
@@ -84,32 +80,29 @@ class CustomUser(AbstractUser):
         'self',
         through='Subscription',
         through_fields=('subscribed_to', 'subscriber'),
-        # Параметр отвечающий за семмитричность
-        # На примере: Если пользователь подписывается,
-        # это не значит что подписка взаимная
         symmetrical=False,
         related_name='following',
         verbose_name='Подписки'
     )
 
-    def subscribe(self, user):
-        '''Подписка'''
+    def subscribe(self, user: 'CustomUser') -> None:
+        '''Подписка.'''
         Subscription.objects.create(subscriber=self, subscribed_to=user)
 
-    def unsubscribe(self, user):
-        '''Отписка'''
+    def unsubscribe(self, user: 'CustomUser') -> None:
+        '''Отписка.'''
         Subscription.objects.filter(
             subscriber=self, subscribed_to=user
         ).delete()
 
-    def is_subscribed(self, user):
-        '''Проверка: подписан ли текущий пользователь на другого'''
+    def is_subscribed(self, user: 'CustomUser') -> bool:
+        '''Проверка: подписан ли текущий пользователь на другого.'''
         return Subscription.objects.filter(
             subscriber=self, subscribed_to=user
         ).exists()
 
-    def subscribed_to(self, user):
-        '''Проверка: подписан ли пользователь на текущего пользователя'''
+    def subscribed_to(self, user: 'CustomUser') -> bool:
+        '''Проверка: подписан ли пользователь на текущего пользователя.'''
         return Subscription.objects.filter(
             subscriber=user, subscribed_to=self
         ).exists()
