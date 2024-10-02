@@ -190,17 +190,23 @@ class RecipeSerializer(serializers.ModelSerializer):
             recipe=obj
         ).exists()
 
-# New
     def validate_ingredients(self, ingredients):
-        ingredient_ids = [ingredient.get('id') for ingredient in ingredients]
-        if len(set(ingredient_ids)) != len(ingredient_ids):
+        if not ingredients:
+            raise serializers.ValidationError(
+                detail='Обязательное поле.'
+            )
+        ingredient_ids = {ingredient.get('id') for ingredient in ingredients}
+        if len(ingredient_ids) != len(ingredients):
             raise serializers.ValidationError(
                 'Нельзя передавать два одинаковых ингредиента.'
             )
         return ingredients
 
-# New
     def validate_tags(self, tags):
+        if not tags:
+            raise serializers.ValidationError(
+                detail='Обязательное поле.'
+            )
         if len(set(tags)) != len(tags):
             raise serializers.ValidationError(
                 'Нельзя передавать два одинаковых тега.'
@@ -208,20 +214,8 @@ class RecipeSerializer(serializers.ModelSerializer):
         return tags
 
     def create(self, validated_data):
-        # if 'tags' not in self.initial_data and 'ingredients' not in self.initial_data:
-        #     raise serializers.ValidationError(
-        #         detail={'error': 'tags и ingredients обязательные поля.'}
-        #     )
         tags_list = validated_data.pop('tags')
-        if not tags_list:
-            raise serializers.ValidationError(
-                detail={'tags': 'Обязательное поле.'}
-            )
         ingredients_list = validated_data.pop('recipeingredient_set')
-        if not ingredients_list:
-            raise serializers.ValidationError(
-                detail={'ingredients': 'Обязательное поле.'}
-            )
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags_list)
         for ingredient_dict in ingredients_list:
@@ -235,7 +229,6 @@ class RecipeSerializer(serializers.ModelSerializer):
             )
         return recipe
 
-# Change
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)
         instance.text = validated_data.get('text', instance.text)
@@ -245,26 +238,20 @@ class RecipeSerializer(serializers.ModelSerializer):
             instance.cooking_time
         )
         tags_list = validated_data.pop('tags', None)
-        if not tags_list:
-            raise serializers.ValidationError(
-                detail={'tags': 'Обязательное поле.'}
-            )
-        instance.tags.set(tags_list, clear=True)
         ingredients_list = validated_data.pop('recipeingredient_set', None)
-        if not ingredients_list:
-            raise serializers.ValidationError(
-                detail={'ingredients': 'Обязательное поле.'}
-            )
-        RecipeIngredient.objects.filter(recipe=instance).delete()
-        for ingredient_dict in ingredients_list:
-            ingredient_id = ingredient_dict.get('id')
-            amount = ingredient_dict.get('amount')
-            ingredient = get_object_or_404(Ingredient, pk=ingredient_id.id)
-            RecipeIngredient.objects.create(
-                recipe=instance,
-                ingredient=ingredient,
-                amount=amount
-            )
+        if tags_list:
+            instance.tags.set(tags_list, clear=True)
+        if ingredients_list:
+            RecipeIngredient.objects.filter(recipe=instance).delete()
+            for ingredient_dict in ingredients_list:
+                ingredient_id = ingredient_dict.get('id')
+                amount = ingredient_dict.get('amount')
+                ingredient = get_object_or_404(Ingredient, pk=ingredient_id.id)
+                RecipeIngredient.objects.create(
+                    recipe=instance,
+                    ingredient=ingredient,
+                    amount=amount
+                )
         instance.save()
         return instance
 
@@ -304,7 +291,6 @@ class SubscriptionsSerializer(UserSerializer):
             'recipes_count'
         )
 
-# New
     def to_representation(self, instance):
         return super(
             serializers.ModelSerializer, self
@@ -316,4 +302,8 @@ class SubscriptionsSerializer(UserSerializer):
 
     def get_recipes(self, obj):
         '''Выводит все рецепты пользователя.'''
-        return ShortRecipeSerializer(obj.recipes.all(), many=True).data
+        recipes_limit = self.context.get('recipes_limit')
+        queryset = obj.recipes.all()
+        if recipes_limit:
+            queryset = queryset[:int(recipes_limit)]
+        return ShortRecipeSerializer(queryset, many=True).data

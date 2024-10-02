@@ -16,11 +16,10 @@ class InterceptorIntegrityErrorMiddleware:
     def process_exception(self, request, exception):
         if isinstance(exception, IntegrityError):
             response = Response(
-                {'error': 'Вы уже взаимодействовали с этим объектом'},
+                {'error': 'Ошибка взаимодействовали с БД проверьте введенные данные'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             response.accepted_renderer = JSONRenderer()
             response.accepted_media_type = JSONRenderer.media_type
             response.renderer_context = {'request': request}
             return response
-        return None

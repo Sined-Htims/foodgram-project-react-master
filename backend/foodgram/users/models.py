@@ -38,7 +38,6 @@ class Subscription(models.Model):
             CheckConstraint(
                 check=~Q(subscriber=F('subscribed_to')),
                 name='prevent_self_subscription',
-                # violation_error_message="Невозможно подписаться на себя"
             ),
             UniqueConstraint(
                 fields=['subscriber', 'subscribed_to'],

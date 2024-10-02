@@ -93,11 +93,12 @@ class UserViewSet(viewsets.ModelViewSet):
         '''
         user = request.user
         subscriptions = user.following.all()
+        recipes_limit = request.query_params.get('recipes_limit')
         page = self.paginate_queryset(subscriptions)
         serializer = SubscriptionsSerializer(
             page,
             many=True,
-            context={'request': request}
+            context={'request': request, 'recipes_limit': recipes_limit}
         )
         return self.get_paginated_response(serializer.data)
 
@@ -111,9 +112,10 @@ def subscribe(request: Request, user_id: int):
     '''
     user = request.user
     user_to_follow = get_object_or_404(User, pk=user_id)
+    recipes_limit = request.query_params.get('recipes_limit')
     serializer = SubscriptionsSerializer(
         user_to_follow,
-        context={'request': request}
+        context={'request': request, 'recipes_limit': recipes_limit},
     )
     if request.method == 'POST':
         user.subscribe(user_to_follow)
