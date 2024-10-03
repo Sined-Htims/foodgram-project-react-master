@@ -14,7 +14,9 @@ def create_ingredients_pdf(ingredients: dict):
     '''
     # Создание PDF-документа
     response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="shopping_list.pdf"'
+    response[
+        'Content-Disposition'
+    ] = 'attachment; filename="shopping_list.pdf"'
     doc = SimpleDocTemplate(response, pagesize=letter)
     elements = []
     # Настройка стилей для Paragraph

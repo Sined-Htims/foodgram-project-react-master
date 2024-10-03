@@ -13,7 +13,7 @@ class Tag(models.Model):
     '''Модель тэгов.'''
     name = models.CharField(
         verbose_name='Название',
-        max_length=settings.MAX_LENGTH_TEG,
+        max_length=settings.MAX_LENGTH_NAME_TAG,
         unique=True
     )
     color = models.CharField(
@@ -24,7 +24,7 @@ class Tag(models.Model):
     )
     slug = models.SlugField(
         verbose_name='Уникальное имя',
-        max_length=settings.MAX_LENGTH_TEG,
+        max_length=settings.MAX_LENGTH_SLUG_TAG,
         unique=True
     )
 
@@ -41,11 +41,11 @@ class Ingredient(models.Model):
     '''Модель ингредиентов.'''
     name = models.CharField(
         verbose_name='Продукт',
-        max_length=settings.MAX_LENGTH_INGREDIENT
+        max_length=settings.MAX_LENGTH_NAME_INGREDIENT
     )
     measurement_unit = models.CharField(
         verbose_name='Система измерения',
-        max_length=settings.MAX_LENGTH_INGREDIENT
+        max_length=settings.MAX_LENGTH_UNIT_INGREDIENT
     )
 
     class Meta:
@@ -70,6 +70,7 @@ class Recipe(models.Model):
     text = models.TextField(verbose_name='Описание')
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления',
+        help_text='Время в минутах',
         validators=[MinValueValidator(1)]
     )
     author = models.ForeignKey(
@@ -203,4 +204,7 @@ class RecipeShoppingList(models.Model):
         ]
 
     def __str__(self):
-        return f'"{self.shopping_list.owner}", добавил "{self.recipe}" в свой список покупок.'
+        return f'''
+        "{self.shopping_list.owner}", добавил рецепт
+        "{self.recipe}" в свой список покупок.
+        '''

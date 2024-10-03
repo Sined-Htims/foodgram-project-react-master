@@ -6,22 +6,18 @@ from recipes.models import (
 )
 
 
+@admin.register(Favorite)
 class FavoriteAdmin(admin.ModelAdmin):
     '''Поиск и отображение для модели "Избранное" в админке.'''
     search_fields = ('user__username',)
     list_display = ('__str__', 'user', 'recipe')
 
 
-admin.site.register(Favorite, FavoriteAdmin)
-
-
+@admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
     '''Поиск и отображение для модели "Ингредиенты" в админке.'''
     list_display = ('name', 'measurement_unit')
     search_fields = ('name', )
-
-
-admin.site.register(Ingredient, IngredientAdmin)
 
 
 class RecipeIngredientInline(admin.TabularInline):
@@ -33,6 +29,7 @@ class RecipeIngredientInline(admin.TabularInline):
     extra = 1
 
 
+@admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
     '''
     Поиск, дополнительные промежуточные модели, фильтры, и отображение
@@ -49,9 +46,7 @@ class RecipeAdmin(admin.ModelAdmin):
     get_favorite_count.short_description = 'Вайки'
 
 
-admin.site.register(Recipe, RecipeAdmin)
-
-
+@admin.register(RecipeIngredient)
 class RecipeIngredientAdmin(admin.ModelAdmin):
     '''
     Поиск и отображение для промежуточной модели
@@ -61,9 +56,7 @@ class RecipeIngredientAdmin(admin.ModelAdmin):
     search_fields = ('recipe__name', 'ingredient__name')
 
 
-admin.site.register(RecipeIngredient, RecipeIngredientAdmin)
-
-
+@admin.register(RecipeShoppingList)
 class RecipeShoppingListAdmin(admin.ModelAdmin):
     '''
     Поиск и отображение для промежуточной модели
@@ -71,9 +64,6 @@ class RecipeShoppingListAdmin(admin.ModelAdmin):
     '''
     search_fields = ('shopping_list__owner__username',)
     list_display = ('__str__', 'shopping_list', 'recipe')
-
-
-admin.site.register(RecipeShoppingList, RecipeShoppingListAdmin)
 
 
 class ShoppingListInline(admin.TabularInline):
@@ -85,6 +75,7 @@ class ShoppingListInline(admin.TabularInline):
     extra = 1
 
 
+@admin.register(ShoppingList)
 class ShoppingListAdmin(admin.ModelAdmin):
     '''
     Поиск и дополнительная промежуточная модель,
@@ -94,13 +85,8 @@ class ShoppingListAdmin(admin.ModelAdmin):
     search_fields = ('owner__username',)
 
 
-admin.site.register(ShoppingList, ShoppingListAdmin)
-
-
+@admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
     '''Поиск и отображение для модели "Тэги" в админке.'''
     list_display = ('name', 'color', 'slug')
     search_fields = ('name',)
-
-
-admin.site.register(Tag, TagAdmin)

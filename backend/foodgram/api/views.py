@@ -8,7 +8,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from api.filters import RecipeFilter, IngredientFilter
-from api.permissions import IsAuthor
+from api.permissions import IsAuthorPermissions
 from api.services import create_ingredients_pdf
 from api.serializers import (
     IngredientSerializer, LoginSerializer, RecipeSerializer,
@@ -42,10 +42,7 @@ class UserViewSet(viewsets.ModelViewSet):
         permission_classes=(permissions.IsAuthenticated,)
     )
     def user_me(self, request: Request):
-        '''
-        View-функция для эндпоинта users/me/.
-        Получает данные текущего пользователя.
-        '''
+        '''Получает данные текущего пользователя.'''
         user = request.user
         serializer = self.get_serializer(user)
         return Response(data=serializer.data)
@@ -57,10 +54,7 @@ class UserViewSet(viewsets.ModelViewSet):
         permission_classes=(permissions.IsAuthenticated,)
     )
     def set_password(self, request: Request):
-        '''
-        View-функция для эндпоинта users/set_password/.
-        Меняет текущий пароль пользователя, на новый.
-        '''
+        '''Меняет текущий пароль пользователя, на новый.'''
         serializer = SetPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = request.user
@@ -87,7 +81,6 @@ class UserViewSet(viewsets.ModelViewSet):
     )
     def user_subscriptions(self, request: Request):
         '''
-        View-функция для эндпоинта users/subscriptions/.
         Получает список пользователей на которых
         подписан текущий пользователь.
         '''
@@ -178,7 +171,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
     '''Представление для эндпоинта recipes.'''
     queryset = Recipe.objects.all()
     serializer_class = RecipeSerializer
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly, IsAuthor)
+    permission_classes = (
+        permissions.IsAuthenticatedOrReadOnly, IsAuthorPermissions
+    )
     http_method_names = ['get', 'post', 'delete', 'patch']
     filter_backends = (DjangoFilterBackend,)
     filter_class = RecipeFilter
@@ -198,33 +193,19 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=(permissions.IsAuthenticated,)
     )
     def favorite(self, request: Request, pk):
-        '''
-        View-функция для эндпоинта recipe/{id}/favorite/.
-        Добавляет/удаляет рецепт из избранного.
-        '''
+        '''Добавляет/удаляет рецепт из избранного.'''
         user = request.user
-        if request.method == 'POST':
-            try:
-                recipe = Recipe.objects.get(pk=pk)
-            except Recipe.DoesNotExist:
-                return Response(
-                    data={'error': 'Рецепт не найден'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            serializer = ShortRecipeSerializer(
-                recipe,
-                context={'request': request}
-            )
-            Favorite.objects.create(user=user, recipe=recipe)
-            return Response(
-                data=serializer.data,
-                status=status.HTTP_201_CREATED
-            )
         recipe = get_object_or_404(Recipe, pk=pk)
         serializer = ShortRecipeSerializer(
             recipe,
             context={'request': request}
         )
+        if request.method == 'POST':
+            Favorite.objects.create(user=user, recipe=recipe)
+            return Response(
+                data=serializer.data,
+                status=status.HTTP_201_CREATED
+            )
         try:
             Favorite.objects.get(user=user, recipe=recipe).delete()
         except Favorite.DoesNotExist:
@@ -241,39 +222,24 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=(permissions.IsAuthenticated,)
     )
     def shopping_cart(self, request: Request, pk):
-        '''
-        View-функция для эндпоинта recipe/{id}/shopping_cart/.
-        Добавляет/удаляет рецепт из списка покупок.
-        '''
+        '''Добавляет/удаляет рецепт из списка покупок.'''
         user = request.user
+        recipe = get_object_or_404(Recipe, pk=pk)
+        serializer = ShortRecipeSerializer(
+            recipe,
+            context={'request': request}
+        )
         shopping_list_obj, _ = ShoppingList.objects.get_or_create(
             owner=user
         )
         if request.method == 'POST':
-            try:
-                recipe = Recipe.objects.get(pk=pk)
-            except Recipe.DoesNotExist:
-                return Response(
-                    data={'error': 'Рецепт не найден'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            serializer = ShortRecipeSerializer(
-                recipe,
-                context={'request': request}
-            )
             RecipeShoppingList.objects.create(
                 shopping_list=shopping_list_obj,
                 recipe=recipe
             )
             return Response(
                 data=serializer.data,
-                status=status.HTTP_201_CREATED
-            )
-        recipe = get_object_or_404(Recipe, pk=pk)
-        serializer = ShortRecipeSerializer(
-            recipe,
-            context={'request': request}
-        )
+                status=status.HTTP_201_CREATED)
         try:
             RecipeShoppingList.objects.get(
                 shopping_list=shopping_list_obj,
@@ -293,10 +259,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         permission_classes=(permissions.IsAuthenticated,)
     )
     def download_shopping_cart(self, request: Request):
-        '''
-        View-функция для эндпоинта recipe/{id}/download_shopping_cart/.
-        Выдает PDF-файл для скачивания.
-        '''
+        '''Выдает PDF-файл для скачивания.'''
         shopping_list = get_object_or_404(
             ShoppingList,
             owner=request.user
@@ -313,7 +276,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 ingredient_name = ri.ingredient.name
                 ingredient_unit = ri.ingredient.measurement_unit
                 if (ingredient_name, ingredient_unit) in ingredients:
-                    ingredients[(ingredient_name, ingredient_unit)] += ri.amount
+                    ingredients[
+                        (ingredient_name, ingredient_unit)
+                    ] += ri.amount
                 else:
                     ingredients[(ingredient_name, ingredient_unit)] = ri.amount
         return create_ingredients_pdf(ingredients)

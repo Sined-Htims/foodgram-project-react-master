@@ -61,9 +61,8 @@ class UserSerializer(serializers.ModelSerializer):
         )
         return super(UserSerializer, self).create(validated_data)
 
-# New
     def to_representation(self, instance):
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request.method == 'POST':
             return {
                 'email': instance.email,
@@ -72,8 +71,7 @@ class UserSerializer(serializers.ModelSerializer):
                 'first_name': instance.first_name,
                 'last_name': instance.last_name
             }
-        else:
-            return super().to_representation(instance)
+        return super().to_representation(instance)
 
 
 class SetPasswordSerializer(serializers.Serializer):
@@ -139,7 +137,9 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['id'] = instance.ingredient.id
         representation['name'] = instance.ingredient.name
-        representation['measurement_unit'] = instance.ingredient.measurement_unit
+        representation[
+            'measurement_unit'
+        ] = instance.ingredient.measurement_unit
         representation['amount'] = instance.amount
         return representation
 
